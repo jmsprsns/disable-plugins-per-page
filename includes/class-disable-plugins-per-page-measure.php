@@ -508,8 +508,10 @@ final class Disable_Plugins_Per_Page_Measure {
 			$urls[] = get_permalink( $post[0] );
 		}
 
-		if ( is_array( $compiled ) && ! empty( $compiled['items'] ) ) {
-			foreach ( array_slice( (array) $compiled['items'], 0, 3, true ) as $item ) {
+		if ( is_array( $compiled ) && ( ! empty( $compiled['items'] ) || ! empty( $compiled['ids'] ) ) ) {
+			$items = array_merge( array_values( isset( $compiled['items'] ) ? (array) $compiled['items'] : array() ), array_values( isset( $compiled['ids'] ) ? (array) $compiled['ids'] : array() ) );
+
+			foreach ( array_slice( $items, 0, 3 ) as $item ) {
 				$urls[] = get_permalink( (int) $item['id'] );
 			}
 		}

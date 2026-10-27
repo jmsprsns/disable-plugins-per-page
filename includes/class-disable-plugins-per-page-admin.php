@@ -1018,8 +1018,8 @@ final class Disable_Plugins_Per_Page_Admin {
 							<p class="dppp-found">
 								<?php echo self::icon( 'file-search', 14 ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Bundled SVG. ?>
 								<?php
-								/* translators: %d: number of published pages. */
-								echo esc_html( sprintf( _n( 'Found on %d published page.', 'Found on %d published pages.', (int) $info['found'], 'disable-plugins-per-page' ), (int) $info['found'] ) );
+								/* translators: %d: number of pages. */
+								echo esc_html( sprintf( _n( 'Found on %d page.', 'Found on %d pages.', (int) $info['found'], 'disable-plugins-per-page' ), (int) $info['found'] ) );
 								?>
 							</p>
 							<?php if ( ! empty( $info['global'] ) ) : ?>
@@ -1452,7 +1452,7 @@ final class Disable_Plugins_Per_Page_Admin {
 		}
 
 		$compiled = get_option( Disable_Plugins_Per_Page_Filter::COMPILED );
-		$pages    = is_array( $compiled ) && ! empty( $compiled['items'] ) ? count( $compiled['items'] ) : 0;
+		$pages    = is_array( $compiled ) ? count( isset( $compiled['items'] ) ? (array) $compiled['items'] : array() ) + count( isset( $compiled['ids'] ) ? (array) $compiled['ids'] : array() ) : 0;
 		$loader   = in_array( Disable_Plugins_Per_Page_Loader::status(), array( 'installed', 'outdated' ), true );
 		$paused   = ! empty( $state['paused'] );
 		$safe     = defined( 'DISABLE_PLUGINS_PER_PAGE_SAFE_MODE' ) && DISABLE_PLUGINS_PER_PAGE_SAFE_MODE;

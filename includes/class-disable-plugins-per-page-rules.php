@@ -490,10 +490,10 @@ final class Disable_Plugins_Per_Page_Rules {
 			} else {
 				$found               = self::content_pages( $rule['contains'] );
 				$info[ $rule['id'] ] = array(
-					'found'  => count( $found['paths'] ),
+					'found'  => count( $found['ids'] ),
 					'global' => $found['global'],
 				);
-				$compiled            = self::compile_front( $rule, $found['paths'] );
+				$compiled            = self::compile_front( $rule, $found );
 			}
 
 			if ( 'off' === $rule['status'] || ! $rule['plugins'] || ! $compiled ) {
@@ -511,7 +511,8 @@ final class Disable_Plugins_Per_Page_Rules {
 			'v'     => self::COMPILED_VERSION,
 			'front' => $front,
 			'admin' => $admin,
-			'items' => self::compile_items(),
+			'items' => self::plain() ? array() : self::compile_items(),
+			'ids'   => self::plain() ? self::compile_items( true ) : array(),
 			'deps'  => self::dependencies( $installed, $active ),
 			'maps'  => self::query_var_maps(),
 			'guard' => empty( $settings['guard'] ) ? 0 : 1,
@@ -527,14 +528,19 @@ final class Disable_Plugins_Per_Page_Rules {
 	 * The parts of a front-end rule the filter needs.
 	 *
 	 * @param array $rule  Rule.
-	 * @param array $found Paths of pages whose content matched.
+	 * @param array $found Pages whose content matched, from content_pages().
 	 * @return array|null Null when the rule doesn't say where.
 	 */
 	private static function compile_front( array $rule, array $found ) {
 		$paths = array();
+		$ids   = array();
 
-		foreach ( array_merge( self::item_paths( $rule['items'] ), $found ) as $path ) {
-			$paths[ $path ] = 1;
+		if ( self::plain() ) {
+			$ids = array_values( array_unique( array_merge( self::item_ids( $rule['items'] ), $found['ids'] ) ) );
+		} else {
+			foreach ( array_merge( self::item_paths( $rule['items'] ), $found['paths'] ) as $path ) {
+				$paths[ $path ] = 1;
+			}
 		}
 
 		$compiled = array(
@@ -546,6 +552,7 @@ final class Disable_Plugins_Per_Page_Rules {
 			'types'      => array_values( (array) $rule['types'] ),
 			'post_types' => array_values( (array) $rule['post_types'] ),
 			'paths'      => $paths,
+			'ids'        => $ids,
 			'patterns'   => array_values( (array) $rule['patterns'] ),
 			'device'     => (string) $rule['device'],
 		);
@@ -553,7 +560,7 @@ final class Disable_Plugins_Per_Page_Rules {
 		// "Only where its shortcode is used" with nothing found yet still
 		// means "off everywhere else", so it's kept; a plain rule with no
 		// "where" at all isn't.
-		if ( ! $compiled['all'] && ! $compiled['types'] && ! $compiled['post_types'] && ! $paths && ! $compiled['patterns'] && ! $rule['contains'] && ! $rule['items'] ) {
+		if ( ! $compiled['all'] && ! $compiled['types'] && ! $compiled['post_types'] && ! $paths && ! $ids && ! $compiled['patterns'] && ! $rule['contains'] && ! $rule['items'] ) {
 			return null;
 		}
 
@@ -602,6 +609,74 @@ final class Disable_Plugins_Per_Page_Rules {
 	}
 
 	/**
+	 * Whether the site uses plain permalinks (?p=123), so pages can't be
+	 * told apart by their path and are matched by ID instead.
+	 *
+	 * @return bool
+	 */
+	public static function plain() {
+		return '' === (string) get_option( 'permalink_structure' );
+	}
+
+	/**
+	 * IDs of the published (or private) posts in a list.
+	 *
+	 * @param array $ids Post IDs.
+	 * @return array
+	 */
+	public static function item_ids( array $ids ) {
+		$out = array();
+
+		foreach ( $ids as $id ) {
+			$post = get_post( (int) $id );
+
+			if ( $post && in_array( $post->post_status, array( 'publish', 'private' ), true ) ) {
+				$out[] = (int) $post->ID;
+			}
+		}
+
+		return array_values( array_unique( $out ) );
+	}
+
+	/**
+	 * A published or private post's path, the way visitors reach it.
+	 *
+	 * @param int|WP_Post $post Post.
+	 * @return string Empty when it can't be matched by path: not published,
+	 *                a plain ?p=123 link, or "/" for anything but the front page.
+	 */
+	public static function post_path( $post ) {
+		$post = get_post( $post );
+
+		if ( ! $post || ! in_array( $post->post_status, array( 'publish', 'private' ), true ) ) {
+			return '';
+		}
+
+		// Private posts get a plain link for some users; use the link they
+		// have once published, which is the one their visitors use.
+		$link_post = $post;
+
+		if ( 'private' === $post->post_status ) {
+			$link_post              = clone $post;
+			$link_post->post_status = 'publish';
+		}
+
+		$url = get_permalink( $link_post );
+
+		if ( ! is_string( $url ) || false !== strpos( $url, '?' ) ) {
+			return '';
+		}
+
+		$path = self::url_path( $url );
+
+		if ( '/' === $path && ! ( 'page' === get_option( 'show_on_front' ) && (int) get_option( 'page_on_front' ) === (int) $post->ID ) ) {
+			return '';
+		}
+
+		return $path;
+	}
+
+	/**
 	 * Normalised path of each published post in a list.
 	 *
 	 * @param array $ids Post IDs.
@@ -611,14 +686,10 @@ final class Disable_Plugins_Per_Page_Rules {
 		$paths = array();
 
 		foreach ( $ids as $id ) {
-			$post = get_post( (int) $id );
+			$path = self::post_path( (int) $id );
 
-			if ( $post && in_array( $post->post_status, array( 'publish', 'private' ), true ) ) {
-				$path = self::url_path( get_permalink( $post ) );
-
-				if ( '' !== $path ) {
-					$paths[] = $path;
-				}
+			if ( '' !== $path ) {
+				$paths[] = $path;
 			}
 		}
 
@@ -670,17 +741,18 @@ final class Disable_Plugins_Per_Page_Rules {
 	}
 
 	/**
-	 * Published pages whose content contains any of the given strings, plus
-	 * pages that use a synced pattern containing them.
+	 * Published (and private) pages whose content contains any of the given
+	 * strings, plus pages that use a synced pattern containing them.
 	 *
 	 * @param array $needles Shortcode or block names.
-	 * @return array 'paths' and 'global' (also found in a template, template
-	 *               part or widget, which can show on every page).
+	 * @return array 'ids', 'paths' and 'global' (also found in a template,
+	 *               template part or widget, which can show on every page).
 	 */
 	public static function content_pages( array $needles ) {
 		global $wpdb;
 
 		$result = array(
+			'ids'    => array(),
 			'paths'  => array(),
 			'global' => false,
 		);
@@ -705,13 +777,13 @@ final class Disable_Plugins_Per_Page_Rules {
 		$type_list = implode( ',', array_fill( 0, count( $types ), '%s' ) );
 
 		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.DirectDatabaseQuery -- Every value is prepared above or here; this runs on save, not on page views.
-		$ids = $wpdb->get_col( $wpdb->prepare( "SELECT ID FROM {$wpdb->posts} WHERE post_status = 'publish' AND post_type IN ($type_list) AND $like_sql LIMIT %d", array_merge( $types, array( self::MAX_FOUND ) ) ) );
+		$ids = $wpdb->get_col( $wpdb->prepare( "SELECT ID FROM {$wpdb->posts} WHERE post_status IN ('publish','private') AND post_type IN ($type_list) AND $like_sql LIMIT %d", array_merge( $types, array( self::MAX_FOUND ) ) ) );
 
 		// Synced patterns: find the pages that include them.
 		$blocks = $wpdb->get_col( "SELECT ID FROM {$wpdb->posts} WHERE post_type = 'wp_block' AND post_status = 'publish' AND $like_sql LIMIT 50" );
 
 		foreach ( $blocks as $block_id ) {
-			$more = $wpdb->get_col( $wpdb->prepare( "SELECT ID FROM {$wpdb->posts} WHERE post_status = 'publish' AND post_type IN ($type_list) AND post_content LIKE %s LIMIT %d", array_merge( $types, array( '%' . $wpdb->esc_like( '"ref":' . (int) $block_id ) . '%', self::MAX_FOUND ) ) ) );
+			$more = $wpdb->get_col( $wpdb->prepare( "SELECT ID FROM {$wpdb->posts} WHERE post_status IN ('publish','private') AND post_type IN ($type_list) AND post_content LIKE %s LIMIT %d", array_merge( $types, array( '%' . $wpdb->esc_like( '"ref":' . (int) $block_id ) . '%', self::MAX_FOUND ) ) ) );
 			$ids  = array_merge( $ids, $more );
 		}
 
@@ -730,18 +802,21 @@ final class Disable_Plugins_Per_Page_Rules {
 			}
 		}
 
-		$result['paths']  = self::item_paths( array_slice( array_unique( array_map( 'intval', $ids ) ), 0, self::MAX_FOUND ) );
+		$result['ids']    = self::item_ids( array_slice( array_unique( array_map( 'intval', $ids ) ), 0, self::MAX_FOUND ) );
+		$result['paths']  = self::item_paths( $result['ids'] );
 		$result['global'] = $templates > 0 || $widgets;
 
 		return $result;
 	}
 
 	/**
-	 * Each post's own settings from the editor, keyed by its path.
+	 * Each post's own settings from the editor, keyed by its path (or by its
+	 * ID on plain permalinks).
 	 *
+	 * @param bool $by_id Key by post ID.
 	 * @return array
 	 */
-	private static function compile_items() {
+	private static function compile_items( $by_id = false ) {
 		$ids   = get_posts(
 			array(
 				'post_type'        => array_keys( self::post_types() ),
@@ -762,9 +837,9 @@ final class Disable_Plugins_Per_Page_Rules {
 				continue;
 			}
 
-			$path = self::url_path( get_permalink( $id ) );
+			$path = $by_id ? '' : self::post_path( $id );
 
-			if ( '' === $path ) {
+			if ( ! $by_id && '' === $path ) {
 				continue;
 			}
 
@@ -778,7 +853,11 @@ final class Disable_Plugins_Per_Page_Rules {
 				$item['test'] = true;
 			}
 
-			$items[ $path ] = $item;
+			if ( $by_id ) {
+				$items[ (int) $id ] = $item;
+			} else {
+				$items[ $path ] = $item;
+			}
 		}
 
 		return $items;
@@ -933,7 +1012,7 @@ final class Disable_Plugins_Per_Page_Rules {
 		if ( 'mobile' === $rule['device'] ) {
 			$text .= ' · ' . __( 'phones and tablets', 'disable-plugins-per-page' );
 		} elseif ( 'desktop' === $rule['device'] ) {
-			$text .= ' · ' . __( 'desktops', 'disable-plugins-per-page' );
+			$text .= ' · ' . __( 'computers', 'disable-plugins-per-page' );
 		}
 
 		return $text;

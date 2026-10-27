@@ -147,6 +147,7 @@ final class Disable_Plugins_Per_Page_Editor {
 		// What the rules alone do here (the page's own choices left out).
 		$rules_only          = $compiled;
 		$rules_only['items'] = array();
+		$rules_only['ids']   = array();
 		$ctx                 = self::context( $post );
 		$visitors            = Disable_Plugins_Per_Page_Filter::evaluate( $rules_only, 'front', $ctx, false, $state, $active );
 		$testing             = Disable_Plugins_Per_Page_Filter::evaluate( $rules_only, 'front', $ctx, true, $state, $active );
@@ -220,7 +221,7 @@ final class Disable_Plugins_Per_Page_Editor {
 	 */
 	private static function post_path( $post ) {
 		if ( 'publish' === $post->post_status || 'private' === $post->post_status ) {
-			return Disable_Plugins_Per_Page_Rules::url_path( get_permalink( $post ) );
+			return Disable_Plugins_Per_Page_Rules::post_path( $post );
 		}
 
 		if ( ! function_exists( 'get_sample_permalink' ) ) {

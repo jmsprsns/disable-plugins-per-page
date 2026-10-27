@@ -634,9 +634,15 @@ if ( ! class_exists( 'Disable_Plugins_Per_Page_Filter', false ) ) :
 				}
 			}
 
-			// This page's own settings from the editor beat the rules.
-			if ( 'front' === $area && ! empty( $compiled['items'] ) && isset( $ctx['path'] ) ) {
-				$item = self::find_item( (array) $compiled['items'], $ctx['path'] );
+			// This page's own settings from the editor beat the rules. They're
+			// keyed by path, or by post ID on plain permalinks.
+			if ( 'front' === $area && ( ! empty( $compiled['items'] ) || ! empty( $compiled['ids'] ) ) ) {
+				$item = ! empty( $compiled['items'] ) && isset( $ctx['path'] ) ? self::find_item( (array) $compiled['items'], $ctx['path'] ) : null;
+
+				if ( ! $item && ! empty( $compiled['ids'] ) ) {
+					$found = call_user_func( $resolve );
+					$item  = $found['id'] && isset( $compiled['ids'][ $found['id'] ] ) ? $compiled['ids'][ $found['id'] ] : null;
+				}
 
 				if ( $item && ! in_array( (int) $item['id'], $paused_posts, true ) && ( empty( $item['test'] ) || $testing ) ) {
 					foreach ( isset( $item['on'] ) ? (array) $item['on'] : array() as $plugin ) {
@@ -730,8 +736,12 @@ if ( ! class_exists( 'Disable_Plugins_Per_Page_Filter', false ) ) :
 				}
 			}
 
-			if ( ! empty( $rule['types'] ) || ! empty( $rule['post_types'] ) ) {
+			if ( ! empty( $rule['types'] ) || ! empty( $rule['post_types'] ) || ! empty( $rule['ids'] ) ) {
 				$page = call_user_func( $resolve );
+
+				if ( ! empty( $rule['ids'] ) && $page['id'] && in_array( (int) $page['id'], array_map( 'intval', (array) $rule['ids'] ), true ) ) {
+					return true;
+				}
 
 				if ( ! empty( $rule['types'] ) && array_intersect( (array) $rule['types'], (array) $page['types'] ) ) {
 					return true;

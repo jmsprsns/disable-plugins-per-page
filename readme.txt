@@ -121,6 +121,11 @@ No. Everything is free.
 
 == Changelog ==
 
+= 1.0.1 =
+* Fix: "Pages whose content uses" rules now include private pages, and a page with a plain ?p=123 link can no longer be mistaken for the home page.
+* Sites on plain permalinks: chosen pages, "content uses" rules and per-page settings now match by post ID.
+* "Computers only" rules are described as computers, to match the setting.
+
 = 1.0.0 =
 * First release: front-end and admin rules by page type, post type, chosen pages, shortcode or block, URL pattern and device; per-page control in the editor; testing for administrators; recovery link, safe mode and crash guard; add-ons turned off with their parent; starter rules; check a page; before-and-after numbers.
 

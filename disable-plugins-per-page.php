@@ -3,7 +3,7 @@
  * Plugin Name:       Disable Plugins Per Page
  * Plugin URI:        https://www.contentpowered.com
  * Description:       Turn plugins off on the pages that don't need them. Rules by page, post type, URL pattern or device, admin rules, a test mode, safe recovery, and before-and-after numbers. Free, with no Pro tier.
- * Version:           1.0.0
+ * Version:           1.0.1
  * Requires at least: 5.8
  * Requires PHP:      7.2
  * Author:            Content Powered
