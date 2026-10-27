@@ -1,0 +1,75 @@
+/**
+ * "Plugins on this page" panel in the block editor sidebar.
+ */
+
+.dppp-editor-intro {
+	margin: 0 0 12px;
+	color: #757575;
+	font-size: 12px;
+	line-height: 1.5;
+}
+
+.dppp-editor-paused {
+	margin: 0 0 12px;
+	padding: 8px 10px;
+	border-left: 3px solid #d63638;
+	background: #fcf0f1;
+	font-size: 12px;
+	line-height: 1.5;
+}
+
+.dppp-editor-filter {
+	width: 100%;
+	margin: 0 0 8px;
+}
+
+.dppp-editor-list {
+	display: grid;
+	gap: 6px;
+	max-height: 420px;
+	margin: 0 0 16px;
+	overflow: auto;
+}
+
+.dppp-editor-plugin {
+	display: grid;
+	gap: 3px;
+	padding: 7px 9px;
+	border: 1px solid #e0e0e0;
+	border-left-width: 3px;
+	border-radius: 4px;
+}
+
+.dppp-editor-plugin.is-on { border-left-color: #00a32a; }
+.dppp-editor-plugin.is-off { border-left-color: #d63638; background: #fcf0f1; }
+.dppp-editor-plugin.is-ruled { border-left-color: #dba617; }
+
+.dppp-editor-name { font-weight: 600; line-height: 1.4; }
+
+.dppp-editor-select {
+	width: 100%;
+	max-width: none;
+	min-height: 30px;
+	margin-top: 3px;
+	font-size: 13px;
+}
+
+.dppp-editor-state {
+	color: #757575;
+	font-size: 12px;
+	line-height: 1.4;
+}
+
+.dppp-editor-plugin.is-off .dppp-editor-state { color: #b32d2e; }
+
+.dppp-editor-foot {
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+	margin: 12px 0 0;
+	color: #757575;
+	font-size: 12px;
+}
+
+.dppp-editor-foot.is-saved span { color: #00701a; }
+.dppp-editor-foot.is-failed span { color: #b32d2e; }
